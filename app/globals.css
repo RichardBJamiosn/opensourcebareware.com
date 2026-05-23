@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f0f0f;
+  --foreground: #f5f5f0;
+  --amber: #f59e0b;
+  --amber-dark: #d97706;
+  --amber-light: #fbbf24;
+  --copper: #b87333;
+  --whiskey: #d4a574;
+  --deep-wood: #1a1208;
+  --bar-top: #2d1f0e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-amber: var(--amber);
+  --color-amber-dark: var(--amber-dark);
+  --color-amber-light: var(--amber-light);
+  --color-copper: var(--copper);
+  --color-whiskey: var(--whiskey);
+  --color-deep-wood: var(--deep-wood);
+  --color-bar-top: var(--bar-top);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for that bar feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--deep-wood);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--copper);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--amber);
+}
