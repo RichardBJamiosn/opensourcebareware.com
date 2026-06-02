@@ -88,6 +88,8 @@ const jsonLd = {
   ],
 };
 
+const GA_ID = "G-ZM3BBYW5PY";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -95,6 +97,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+      <head>
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');`,
+          }}
+        />
+      </head>
       <body className="min-h-screen flex flex-col font-sans antialiased">
         <script
           type="application/ld+json"
