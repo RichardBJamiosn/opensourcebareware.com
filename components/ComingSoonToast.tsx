@@ -33,13 +33,13 @@ export default function ComingSoonToast() {
         onClick={dismiss}
       />
 
-      {/* Positioning wrapper — inline only, no Tailwind transforms */}
+      {/* Positioning wrapper — top center, just below header */}
       <div
         style={{
           position: "fixed",
-          top: "50%",
+          top: "90px",
           left: "50%",
-          transform: "translate(-50%, -50%)",
+          transform: "translateX(-50%)",
           zIndex: 50,
           width: "min(480px, 90vw)",
         }}
