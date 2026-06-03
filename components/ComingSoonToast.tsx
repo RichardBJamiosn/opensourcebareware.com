@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Gear } from "@/components/SteampunkElements";
 
-const STORAGE_KEY = "osb-coming-soon-v2";
+const STORAGE_KEY = "osb-coming-soon-v3";
 
 export default function ComingSoonToast() {
   const [visible, setVisible] = useState(false);
