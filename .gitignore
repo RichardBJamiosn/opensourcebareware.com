@@ -43,3 +43,9 @@ next-env.d.ts
 # python
 __pycache__/
 *.pyc
+
+# bar-app runtime data (config.json holds API keys — never commit)
+bar-app/config.json
+bar-app/invoice_history.json
+bar-app/server.log
+bar-app/*.tmp

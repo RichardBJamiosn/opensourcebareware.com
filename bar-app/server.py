@@ -3,9 +3,9 @@ Bar Inventory Server — Open Source Barware
 Flask app serving dashboard.html with JSON API and file-based persistence.
 """
 
-import json, os, ssl, sys, uuid
+import io, json, os, re, ssl, sys, uuid, urllib.request, urllib.error
 from datetime import datetime, timezone
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 
 # ─────────────────────────────────────────────
 # PATHS
@@ -13,6 +13,8 @@ from flask import Flask, request, jsonify, send_from_directory
 _DIR = os.path.dirname(os.path.abspath(__file__))
 _BAR_FILE = os.path.join(_DIR, "bar_data.json")
 _COUNT_FILE = os.path.join(_DIR, "count_history.json")
+_CONFIG_FILE = os.path.join(_DIR, "config.json")
+_INVOICE_FILE = os.path.join(_DIR, "invoice_history.json")
 
 # ─────────────────────────────────────────────
 # SSL — same macOS fix as the OVLP pop
@@ -119,6 +121,124 @@ def _all_bottles(bar):
         for b in s.get("bottles", []):
             out.append(b)
     return out
+
+
+def _load_config():
+    if os.path.exists(_CONFIG_FILE):
+        try:
+            with open(_CONFIG_FILE) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {"api_base_url": "", "api_key": "", "model": ""}
+
+
+def _save_config(data):
+    tmp = _CONFIG_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp, _CONFIG_FILE)
+
+
+def _load_invoices():
+    if os.path.exists(_INVOICE_FILE):
+        try:
+            with open(_INVOICE_FILE) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return []
+
+
+def _save_invoices(data):
+    tmp = _INVOICE_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp, _INVOICE_FILE)
+
+
+def _mask_key(key):
+    """Show last 4 chars of API key, mask the rest."""
+    if not key:
+        return ""
+    if len(key) <= 4:
+        return "*" * len(key)
+    return "*" * (len(key) - 4) + key[-4:]
+
+
+def _call_ai(messages, config):
+    """Call any OpenAI-compatible endpoint. Returns content string or raises."""
+    base_url = config.get("api_base_url", "").rstrip("/")
+    if not base_url:
+        raise ValueError("api_base_url not configured")
+    url = base_url + "/chat/completions"
+    payload = {
+        "model": config.get("model", "gpt-4o"),
+        "messages": messages,
+        "max_tokens": 4096,
+    }
+    data = json.dumps(payload).encode()
+    headers = {
+        "Authorization": f"Bearer {config.get('api_key', '')}",
+        "Content-Type": "application/json",
+    }
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            body = json.loads(r.read())
+            return body["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"AI API error {e.code}: {err_body[:400]}")
+
+
+# ─────────────────────────────────────────────
+# PROMPT TEMPLATES
+# ─────────────────────────────────────────────
+_PROMPT_SETUP = """\
+You are helping set up a bar inventory system.
+
+Parse this bar walk transcription and return ONLY a JSON object with this exact structure — no explanation, no markdown, just the JSON:
+{{"stations": [{{"name": "Well 1", "type": "well", "bottles": [{{"name": "Tito's Vodka", "category": "vodka"}}]}}]}}
+
+Station types must be one of: well, backbar, storage, walkin
+Categories must be one of: vodka, gin, rum, tequila, mezcal, whiskey, bourbon, scotch, brandy, cognac, liqueur, amaro, wine, beer, mixer, syrup, other
+
+Transcription:
+{text}"""
+
+_PROMPT_COUNT = """\
+You are parsing a weekly bar inventory count.
+
+Known products (bottle_id: name):
+{product_list}
+
+Parse this count transcription and return ONLY a JSON object — no explanation, no markdown, just the JSON:
+{{"matched": [{{"bottle_id": "bot-xxx", "bottle_name": "Tito's Vodka", "level": 0.7, "confidence": "high"}}], "unmatched": [{{"text": "...", "reason": "..."}}]}}
+
+Level rules (must be 0.0 to 1.0 in tenths):
+- "nine-tenths" or "nine tenths" = 0.9
+- "half" = 0.5
+- "point three" = 0.3
+- "full" or "new" = 1.0
+- "empty" = 0.0
+- "three quarters" = 0.75
+- A digit 1–9 alone likely means tenths (e.g. "Tito's nine" = 0.9)
+
+Transcription:
+{text}"""
+
+_PROMPT_INVOICE = """\
+You are extracting line items from a liquor/beverage supply invoice image.
+
+Return ONLY a JSON object — no explanation, no markdown, just the JSON:
+{{"items": [{{"name": "Tito's Handmade Vodka 1L", "size": "1L", "qty": 6, "unit_cost": 22.99, "total": 137.94}}]}}
+
+Rules:
+- Extract every product line item visible
+- If qty or cost is unclear or missing, use null
+- size should be the bottle size (e.g. "750ml", "1L", "1.75L")
+- Do not include subtotals, taxes, or delivery fees as line items"""
 
 
 # ─────────────────────────────────────────────
@@ -601,6 +721,416 @@ def parse_notes():
 
 
 # ─────────────────────────────────────────────
+# ROUTES — Config
+# ─────────────────────────────────────────────
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    cfg = _load_config()
+    return jsonify({
+        "api_base_url": cfg.get("api_base_url", ""),
+        "api_key_masked": _mask_key(cfg.get("api_key", "")),
+        "model": cfg.get("model", ""),
+        "configured": bool(cfg.get("api_base_url") and cfg.get("api_key")),
+    })
+
+
+@app.route("/api/config", methods=["POST"])
+def save_config():
+    body = request.get_json(force=True)
+    cfg = _load_config()
+    if "api_base_url" in body:
+        cfg["api_base_url"] = body["api_base_url"].strip()
+    if "api_key" in body:
+        key = body["api_key"].strip()
+        # Don't overwrite with masked value the client sent back
+        if key and not set(key) <= {"*"}:
+            cfg["api_key"] = key
+    if "model" in body:
+        cfg["model"] = body["model"].strip()
+    _save_config(cfg)
+    print(f"[config] saved: base_url={cfg.get('api_base_url','')}, model={cfg.get('model','')}")
+    return jsonify({
+        "api_base_url": cfg.get("api_base_url", ""),
+        "api_key_masked": _mask_key(cfg.get("api_key", "")),
+        "model": cfg.get("model", ""),
+        "configured": bool(cfg.get("api_base_url") and cfg.get("api_key")),
+    })
+
+
+# ─────────────────────────────────────────────
+# ROUTES — AI
+# ─────────────────────────────────────────────
+def _build_prompt(ptype, placeholder=True):
+    """Build a copy-paste prompt for the given type. Returns prompt str or None if invalid type."""
+    bottles = _all_bottles(_load_bar())
+    if ptype == "setup":
+        text = "[PASTE YOUR BAR WALK TRANSCRIPTION HERE]" if placeholder else ""
+        return _PROMPT_SETUP.replace("{text}", text)
+    elif ptype == "count":
+        product_list = "\n".join(
+            f'{b["id"]}: {b["name"]}' for b in bottles
+        ) or "(no products set up yet)"
+        text = "[PASTE YOUR COUNT TRANSCRIPTION HERE]" if placeholder else ""
+        return _PROMPT_COUNT.replace("{product_list}", product_list).replace("{text}", text)
+    elif ptype == "invoice":
+        return _PROMPT_INVOICE
+    return None
+
+
+@app.route("/api/ai/prompt", methods=["GET"])
+def get_ai_prompt():
+    """Return a prompt template the user can copy into any AI manually."""
+    ptype = request.args.get("type", "")
+    prompt = _build_prompt(ptype)
+    if prompt is None:
+        return jsonify({"error": "type must be setup, count, or invoice"}), 400
+    return jsonify({"prompt": prompt, "type": ptype})
+
+
+@app.route("/api/ai/call", methods=["POST"])
+def ai_call():
+    """Call configured AI with the appropriate prompt. Falls back to prompt text if unconfigured."""
+    body = request.get_json(force=True)
+    ptype = body.get("type", "")
+    text = body.get("text", "")
+    images = body.get("images", [])  # list of base64 data URIs
+
+    if ptype not in ("setup", "count", "invoice"):
+        return jsonify({"error": "type must be setup, count, or invoice"}), 400
+
+    cfg = _load_config()
+    if not cfg.get("api_base_url") or not cfg.get("api_key"):
+        # Return the prompt so client can use it manually
+        return jsonify({
+            "error": "AI not configured",
+            "prompt": _build_prompt(ptype) or "",
+        }), 503
+
+    # Build messages
+    bar = _load_bar()
+    bottles = _all_bottles(bar)
+
+    if ptype == "setup":
+        content = _PROMPT_SETUP.replace("{text}", text)
+        messages = [{"role": "user", "content": content}]
+
+    elif ptype == "count":
+        product_list = "\n".join(f'{b["id"]}: {b["name"]}' for b in bottles)
+        content = _PROMPT_COUNT.replace("{product_list}", product_list).replace("{text}", text)
+        messages = [{"role": "user", "content": content}]
+
+    else:  # invoice
+        # Build multi-modal message with text + images
+        content_parts = []
+        for img in images:
+            # img is a data URI: "data:image/jpeg;base64,..."
+            if img.startswith("data:"):
+                mime, b64 = img.split(",", 1)
+                mime = mime.replace("data:", "").replace(";base64", "")
+            else:
+                mime = "image/jpeg"
+                b64 = img
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:{mime};base64,{b64}"},
+            })
+        content_parts.append({"type": "text", "text": _PROMPT_INVOICE})
+        messages = [{"role": "user", "content": content_parts}]
+
+    try:
+        result = _call_ai(messages, cfg)
+        print(f"[ai] {ptype} call succeeded, response length: {len(result)}")
+        return jsonify({"result": result})
+    except Exception as e:
+        print(f"[ai] {ptype} call failed: {e}")
+        return jsonify({"error": str(e)}), 502
+
+
+@app.route("/api/ai/parse-response", methods=["POST"])
+def ai_parse_response():
+    """Parse and validate JSON text returned by any AI (auto or manual paste)."""
+    body = request.get_json(force=True)
+    ptype = body.get("type", "")
+    json_text = body.get("json_text", "").strip()
+
+    if not json_text:
+        return jsonify({"error": "json_text required"}), 400
+    if ptype not in ("setup", "count", "invoice"):
+        return jsonify({"error": "type must be setup, count, or invoice"}), 400
+
+    # Strip markdown code fences if present
+    json_text = re.sub(r"^```(?:json)?\s*", "", json_text, flags=re.MULTILINE)
+    json_text = re.sub(r"\s*```$", "", json_text, flags=re.MULTILINE)
+    json_text = json_text.strip()
+
+    try:
+        parsed = json.loads(json_text)
+    except json.JSONDecodeError as e:
+        return jsonify({"error": f"Invalid JSON: {e}", "raw": json_text[:500]}), 400
+
+    bar = _load_bar()
+    bottle_map = {b["id"]: b for b in _all_bottles(bar)}
+
+    if ptype == "setup":
+        stations = parsed.get("stations", [])
+        if not isinstance(stations, list):
+            return jsonify({"error": "Expected {stations: [...]}"}), 400
+        # Assign IDs
+        for s in stations:
+            if not s.get("id"):
+                s["id"] = _uid("stn-")
+            for b in s.get("bottles", []):
+                if not b.get("id"):
+                    b["id"] = _uid("bot-")
+        return jsonify({"stations": stations, "station_count": len(stations),
+                        "bottle_count": sum(len(s.get("bottles", [])) for s in stations)})
+
+    elif ptype == "count":
+        matched = parsed.get("matched", [])
+        unmatched = parsed.get("unmatched", [])
+        # Validate bottle IDs exist
+        valid = []
+        for m in matched:
+            bid = m.get("bottle_id", "")
+            if bid in bottle_map:
+                valid.append(m)
+            else:
+                # Try to fuzzy-match by name
+                name = m.get("bottle_name", "").lower()
+                found = next((b for b in bottle_map.values()
+                              if b["name"].lower() == name), None)
+                if found:
+                    m["bottle_id"] = found["id"]
+                    valid.append(m)
+                else:
+                    unmatched.append({"text": m.get("bottle_name", ""), "reason": "bottle not found in bar"})
+        return jsonify({"matched": valid, "unmatched": unmatched})
+
+    else:  # invoice
+        items = parsed.get("items", [])
+        if not isinstance(items, list):
+            return jsonify({"error": "Expected {items: [...]}"}), 400
+        return jsonify({"items": items, "item_count": len(items)})
+
+
+# ─────────────────────────────────────────────
+# ROUTES — Invoices
+# ─────────────────────────────────────────────
+@app.route("/api/invoice", methods=["POST"])
+def save_invoice():
+    """Save a reviewed invoice. Body: {date, items: [{bottle_name, size, qty, unit_cost, total}]}"""
+    body = request.get_json(force=True)
+    invoices = _load_invoices()
+    record = {
+        "id": _uid("inv-"),
+        "date": body.get("date") or _now(),
+        "items": body.get("items", []),
+        "saved": _now(),
+    }
+    invoices.append(record)
+    _save_invoices(invoices)
+    print(f"[invoice] saved: {len(record['items'])} items")
+    return jsonify(record), 201
+
+
+@app.route("/api/invoices", methods=["GET"])
+def get_invoices():
+    invoices = _load_invoices()
+    return jsonify(sorted(invoices, key=lambda x: x.get("date", ""), reverse=True))
+
+
+# ─────────────────────────────────────────────
+# ROUTES — Financial
+# ─────────────────────────────────────────────
+@app.route("/api/usage", methods=["GET"])
+def get_usage():
+    """Per-bottle usage: previous_level + invoiced_qty_since_prev_count - current_level."""
+    counts = _load_counts()
+    if len(counts) < 2:
+        return jsonify({"error": "need at least 2 counts for usage", "usage": []}), 200
+
+    current = counts[-1]
+    previous = counts[-2]
+    prev_date = previous.get("date", "")
+
+    cur_levels = {e["bottle_id"]: float(e.get("level", 0)) for e in current.get("entries", [])}
+    prev_levels = {e["bottle_id"]: float(e.get("level", 0)) for e in previous.get("entries", [])}
+
+    # Sum invoice quantities received since previous count
+    invoices = _load_invoices()
+    inv_since = [inv for inv in invoices if inv.get("date", "") > prev_date]
+    inv_qty_map = {}
+    for inv in inv_since:
+        for item in inv.get("items", []):
+            name = item.get("bottle_name", "").lower()
+            qty = float(item.get("qty") or 0)
+            inv_qty_map[name] = inv_qty_map.get(name, 0) + qty
+
+    bar = _load_bar()
+    usage = []
+    for bottle in _all_bottles(bar):
+        bid = bottle["id"]
+        if bid not in cur_levels or bid not in prev_levels:
+            continue
+        cur = cur_levels[bid]
+        prev = prev_levels[bid]
+        inv_qty = inv_qty_map.get(bottle["name"].lower(), 0)
+        used = round(prev + inv_qty - cur, 3)
+        cost = bottle.get("cost", 0)
+        usage.append({
+            "bottle_id": bid,
+            "bottle_name": bottle["name"],
+            "previous_level": prev,
+            "invoiced_qty": inv_qty,
+            "current_level": cur,
+            "usage": used,
+            "cost_impact": round(used * cost, 2),
+        })
+
+    usage.sort(key=lambda x: x["usage"], reverse=True)
+    return jsonify({"usage": usage, "period_start": prev_date, "period_end": current.get("date", "")})
+
+
+def _parse_size_ml(size_str):
+    """Parse bottle size string to ml. Returns float or None."""
+    if not size_str:
+        return None
+    s = str(size_str).strip().lower().replace(",", "")
+    # "1.75l", "1l", "750ml", "375ml", "200ml"
+    m = re.match(r"(\d+(?:\.\d+)?)\s*(l|ml|liter|litre)?", s)
+    if not m:
+        return None
+    val = float(m.group(1))
+    unit = (m.group(2) or "ml").lower()
+    if unit in ("l", "liter", "litre"):
+        return val * 1000
+    return val  # ml
+
+
+@app.route("/api/cost-per-oz", methods=["GET"])
+def get_cost_per_oz():
+    bar = _load_bar()
+    result = []
+    for bottle in _all_bottles(bar):
+        cost = bottle.get("cost", 0)
+        size_ml = _parse_size_ml(bottle.get("size", "750ml"))
+        if size_ml and cost:
+            oz = size_ml / 29.5735
+            cpo = round(cost / oz, 4)
+        else:
+            cpo = None
+        result.append({
+            "bottle_id": bottle["id"],
+            "bottle_name": bottle["name"],
+            "category": bottle.get("category", ""),
+            "size": bottle.get("size", ""),
+            "size_ml": size_ml,
+            "unit_cost": cost,
+            "cost_per_oz": cpo,
+        })
+    result.sort(key=lambda x: (x["category"], x["bottle_name"]))
+    return jsonify(result)
+
+
+@app.route("/api/export", methods=["GET"])
+def export_xlsx():
+    """Generate and return an XLSX workbook of current inventory + recent counts."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return jsonify({"error": "openpyxl not installed. Run: pip3 install openpyxl"}), 500
+
+    bar = _load_bar()
+    counts = _load_counts()
+    bottles = _all_bottles(bar)
+
+    wb = openpyxl.Workbook()
+
+    # ── Sheet 1: Inventory ──
+    ws1 = wb.active
+    ws1.title = "Inventory"
+    hdr_font = Font(bold=True, color="FFE0E6EF")
+    hdr_fill = PatternFill("solid", fgColor="FF16202E")
+    thin = Side(border_style="thin", color="FF2A3A4A")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    headers = ["Product", "Category", "Station", "Size", "Par", "Level", "Unit Cost", "Total Value"]
+    widths = [30, 14, 20, 10, 8, 8, 12, 14]
+    for i, (h, w) in enumerate(zip(headers, widths), 1):
+        c = ws1.cell(row=1, column=i, value=h)
+        c.font = hdr_font
+        c.fill = hdr_fill
+        c.alignment = Alignment(horizontal="center")
+        c.border = border
+        ws1.column_dimensions[get_column_letter(i)].width = w
+
+    # Bottles are nested under stations; walk them in order so each carries its station name
+    r = 2
+    for station in bar.get("stations", []):
+        for b in station.get("bottles", []):
+            vals = [
+                b.get("name", ""),
+                b.get("category", ""),
+                station.get("name", ""),
+                b.get("size", ""),
+                b.get("par_level", b.get("par", 1)),
+                b.get("current_level", b.get("level", 0)),
+                b.get("cost", 0),
+            ]
+            for ci, v in enumerate(vals, 1):
+                cell = ws1.cell(row=r, column=ci, value=v)
+                cell.border = border
+            # Total Value formula
+            tv = ws1.cell(row=r, column=8, value=f"=G{r}*F{r}")
+            tv.border = border
+            tv.number_format = '"$"#,##0.00'
+            r += 1
+
+    ws1.freeze_panes = "A2"
+
+    # ── Sheet 2: Count History ──
+    ws2 = wb.create_sheet("Count History")
+    for i, h in enumerate(["Date", "Product", "Level", "Previous Level", "Change"], 1):
+        c = ws2.cell(row=1, column=i, value=h)
+        c.font = hdr_font
+        c.fill = hdr_fill
+        c.alignment = Alignment(horizontal="center")
+        c.border = border
+
+    bottle_name_map = {b["id"]: b["name"] for b in bottles}
+    row = 2
+    for cnt in reversed(counts[-10:]):
+        date_str = cnt.get("date", "")[:10]
+        for entry in cnt.get("entries", []):
+            bid = entry.get("bottle_id", "")
+            ws2.cell(row=row, column=1, value=date_str).border = border
+            ws2.cell(row=row, column=2, value=bottle_name_map.get(bid, bid)).border = border
+            ws2.cell(row=row, column=3, value=entry.get("level", "")).border = border
+            ws2.cell(row=row, column=4, value="").border = border
+            ws2.cell(row=row, column=5, value=f"=C{row}-D{row}").border = border
+            row += 1
+
+    ws2.freeze_panes = "A2"
+
+    # Write to buffer and return
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    bar_name = bar.get("bar_name", "Bar").replace(" ", "-") or "Bar"
+    filename = f"{bar_name}-Inventory-{datetime.now().strftime('%Y%m%d')}.xlsx"
+
+    return send_file(
+        buf,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=filename,
+    )
+
+
+# ─────────────────────────────────────────────
 # ROUTES — Stats & Variance
 # ─────────────────────────────────────────────
 @app.route("/api/stats", methods=["GET"])
@@ -687,6 +1217,12 @@ if __name__ == "__main__":
     if not os.path.exists(_COUNT_FILE):
         _save_counts([])
         print(f"[init] created {_COUNT_FILE}")
+    if not os.path.exists(_CONFIG_FILE):
+        _save_config({"api_base_url": "", "api_key": "", "model": ""})
+        print(f"[init] created {_CONFIG_FILE}")
+    if not os.path.exists(_INVOICE_FILE):
+        _save_invoices([])
+        print(f"[init] created {_INVOICE_FILE}")
 
     print("\n  Bar Inventory — Open Source Barware")
     print("  ──────────────────────────────────────────────────────")

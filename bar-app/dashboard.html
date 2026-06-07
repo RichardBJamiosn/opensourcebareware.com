@@ -511,6 +511,57 @@ body{
 }
 .delete-btn:hover{color:var(--wine-glow)}
 .hidden{display:none!important}
+
+/* ── Prompt box ── */
+.prompt-box{
+  width:100%;padding:14px 16px;min-height:120px;resize:vertical;
+  background:var(--bg);border:1px solid rgba(205,127,50,0.15);
+  color:var(--patina-light);font-size:12px;font-family:'Courier New',monospace;
+  line-height:1.6;
+}
+.prompt-box:focus{border-color:var(--copper);outline:none}
+
+/* ── Invoice table ── */
+.invoice-table{width:100%;border-collapse:collapse;font-size:13px}
+.invoice-table th{
+  padding:8px 12px;text-align:left;
+  font-size:10px;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text-light);border-bottom:1px solid var(--gear-border);
+}
+.invoice-table td{
+  padding:8px 12px;border-bottom:1px solid rgba(205,127,50,0.06);
+}
+.invoice-table td input{
+  width:100%;background:transparent;border:none;border-bottom:1px dashed var(--gear-border);
+  color:var(--cream);font-size:13px;padding:2px 4px;
+}
+.invoice-table td input:focus{border-bottom-color:var(--copper);outline:none}
+
+/* ── Financial table ── */
+.fin-table{width:100%;border-collapse:collapse;font-size:13px}
+.fin-table th{
+  padding:10px 14px;text-align:left;
+  font-size:10px;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--text-light);border-bottom:1px solid var(--gear-border);
+  cursor:pointer;user-select:none;
+  background:var(--bg-card);
+}
+.fin-table th:hover{color:var(--copper)}
+.fin-table td{
+  padding:10px 14px;border-bottom:1px solid rgba(205,127,50,0.06);
+  color:var(--text);font-size:13px;
+}
+.fin-table tr:hover td{background:rgba(205,127,50,0.03)}
+
+/* ── AI badge ── */
+.ai-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:10px;letter-spacing:0.06em;text-transform:uppercase;
+  padding:3px 10px;border:1px solid var(--gear-border);
+  color:var(--text-light);
+}
+.ai-badge.ai-auto{color:var(--patina-light);border-color:rgba(107,138,173,0.4)}
+.ai-badge.ai-manual{color:var(--copper);border-color:rgba(205,127,50,0.3)}
 </style>
 </head>
 <body>
@@ -784,10 +835,14 @@ body{
     <!-- Quick actions -->
     <div class="flex items-center justify-between mb-6">
       <h2 class="serif" style="font-size:1.5rem;color:var(--cream)">Inventory</h2>
-      <div class="flex gap-2">
+      <div class="flex gap-2" style="flex-wrap:wrap">
         <button class="btn-copper btn-sm" onclick="showView('count')">Start Count</button>
         <button class="btn-outline btn-sm" onclick="showAddProductModal()">Add Product</button>
-        <button class="btn-outline btn-sm" onclick="showView('history')">View History</button>
+        <button class="btn-outline btn-sm" onclick="showView('history')">History</button>
+        <button class="btn-outline btn-sm" onclick="showView('invoice')">Invoices</button>
+        <button class="btn-outline btn-sm" onclick="showView('financial')">Financials</button>
+        <button class="btn-outline btn-sm" onclick="showView('prompts')">AI Prompts</button>
+        <button class="btn-outline btn-sm" onclick="showView('config')">Config</button>
       </div>
     </div>
 
@@ -811,6 +866,7 @@ body{
       <div class="flex items-center gap-3">
         <button class="btn-outline btn-xs" onclick="showView('dashboard')">&larr; Back</button>
         <span class="serif copper-text" style="font-size:15px" id="count-header">Weekly Count</span>
+        <span id="count-ai-badge" class="ai-badge hidden"></span>
       </div>
       <span class="topbar-clock" id="clock2"></span>
     </div>
@@ -869,6 +925,277 @@ body{
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════ -->
+<!-- VIEW: CONFIG                                    -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="view-config" class="view">
+  <div class="topbar grain">
+    <div class="flex items-center justify-between container" style="padding:0">
+      <div class="flex items-center gap-3">
+        <button class="btn-outline btn-xs" onclick="showView('dashboard')">&larr; Back</button>
+        <span class="serif copper-text" style="font-size:15px">Configuration</span>
+      </div>
+    </div>
+  </div>
+  <div class="container" style="padding-top:40px;padding-bottom:80px;max-width:600px">
+    <div class="panel p-8 rivets mb-6">
+      <h3 class="serif" style="font-size:1.4rem;color:var(--cream);margin-bottom:24px">Bar Settings</h3>
+      <div class="mb-6">
+        <label style="font-size:11px;color:var(--text-light);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:8px">Bar Name</label>
+        <input id="cfg-bar-name" class="input" type="text" placeholder="e.g. The Copper Still">
+      </div>
+    </div>
+
+    <div class="panel p-8 rivets mb-6">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="serif" style="font-size:1.4rem;color:var(--cream)">AI Connection</h3>
+        <span id="cfg-ai-status" class="ai-badge"></span>
+      </div>
+      <p class="text-muted mb-6" style="font-size:13px;line-height:1.7">
+        Connect any AI to enable automatic parsing. Works with OpenAI, Anthropic, Groq, Ollama, or any OpenAI-compatible endpoint. No AI? Use the <strong style="color:var(--copper)">AI Prompts</strong> view to do it manually.
+      </p>
+      <div class="mb-4">
+        <label style="font-size:11px;color:var(--text-light);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:8px">API Base URL</label>
+        <input id="cfg-api-url" class="input" type="text" placeholder="e.g. https://api.openai.com/v1">
+        <div style="font-size:11px;color:var(--text-light);margin-top:6px">
+          OpenAI: <code style="background:rgba(205,127,50,0.08);padding:1px 5px;color:var(--text-muted)">https://api.openai.com/v1</code> &nbsp;|&nbsp;
+          Ollama: <code style="background:rgba(205,127,50,0.08);padding:1px 5px;color:var(--text-muted)">http://localhost:11434/v1</code>
+        </div>
+      </div>
+      <div class="mb-4">
+        <label style="font-size:11px;color:var(--text-light);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:8px">API Key</label>
+        <input id="cfg-api-key" class="input" type="password" placeholder="sk-...">
+      </div>
+      <div class="mb-6">
+        <label style="font-size:11px;color:var(--text-light);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:8px">Model</label>
+        <input id="cfg-model" class="input" type="text" placeholder="e.g. gpt-4o, llama3, claude-3-5-sonnet-20241022">
+      </div>
+      <div class="flex gap-3">
+        <button class="btn-copper" onclick="saveConfig()">Save Configuration</button>
+        <button class="btn-outline" onclick="testAiConnection()">Test Connection</button>
+      </div>
+      <div id="cfg-test-result" class="mt-4 hidden" style="font-size:13px;padding:12px;border:1px solid var(--gear-border)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- VIEW: AI PROMPTS                                -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="view-prompts" class="view">
+  <div class="topbar grain">
+    <div class="flex items-center justify-between container" style="padding:0">
+      <div class="flex items-center gap-3">
+        <button class="btn-outline btn-xs" onclick="showView('dashboard')">&larr; Back</button>
+        <span class="serif copper-text" style="font-size:15px">AI Prompts</span>
+      </div>
+      <span id="prompts-ai-badge" class="ai-badge"></span>
+    </div>
+  </div>
+  <div class="container" style="padding-top:24px;padding-bottom:80px">
+    <div class="instructions-box mb-8" style="max-width:720px;margin-bottom:24px">
+      <strong style="color:var(--cream)">How to use:</strong> Copy a prompt below &rarr; paste into ChatGPT, Claude.ai, Gemini, or any AI &rarr; paste the JSON response back into the box below it &rarr; click Import.<br>
+      No AI account? <a onclick="showView('config')" style="color:var(--copper);cursor:pointer;text-decoration:underline">Configure an API connection</a> for automatic parsing.
+    </div>
+
+    <!-- Setup prompt -->
+    <div class="panel p-6 rivets mb-6" style="max-width:720px">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="serif" style="font-size:1.2rem;color:var(--cream)">1 — Bar Setup Prompt</h3>
+        <span style="font-size:11px;color:var(--text-light)">Week 1 only</span>
+      </div>
+      <p class="text-muted mb-3" style="font-size:13px">Walk your bar, dictate what you see, then use this prompt to turn that transcription into a structured product list.</p>
+      <textarea id="prompt-setup-text" class="prompt-box mb-3" readonly></textarea>
+      <button class="btn-outline btn-sm mb-6" onclick="copyPrompt('prompt-setup-text')">Copy Prompt</button>
+      <div style="height:1px;background:var(--gear-border);margin-bottom:20px"></div>
+      <label style="font-size:11px;color:var(--text-light);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:8px">Paste AI Response Here</label>
+      <textarea id="prompt-setup-response" class="textarea" placeholder='{"stations": [{"name": "Well 1", ...}]}' style="min-height:120px"></textarea>
+      <div class="flex justify-end mt-3">
+        <button class="btn-copper" onclick="importPromptResponse('setup')">Import to Bar Setup</button>
+      </div>
+      <div id="prompt-setup-result" class="mt-4 hidden"></div>
+    </div>
+
+    <!-- Count prompt -->
+    <div class="panel p-6 rivets mb-6" style="max-width:720px">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="serif" style="font-size:1.2rem;color:var(--cream)">2 — Weekly Count Prompt</h3>
+        <span style="font-size:11px;color:var(--text-light)">Every week</span>
+      </div>
+      <p class="text-muted mb-3" style="font-size:13px">This prompt includes your current product list so the AI can match names to your inventory. Regenerate it each week.</p>
+      <button class="btn-outline btn-sm mb-3" onclick="loadCountPrompt()">Load Prompt (includes your products)</button>
+      <textarea id="prompt-count-text" class="prompt-box mb-3" readonly style="min-height:80px"></textarea>
+      <button class="btn-outline btn-sm mb-6" onclick="copyPrompt('prompt-count-text')">Copy Prompt</button>
+      <div style="height:1px;background:var(--gear-border);margin-bottom:20px"></div>
+      <label style="font-size:11px;color:var(--text-light);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:8px">Paste AI Response Here</label>
+      <textarea id="prompt-count-response" class="textarea" placeholder='{"matched": [...], "unmatched": [...]}' style="min-height:120px"></textarea>
+      <div class="flex justify-end mt-3">
+        <button class="btn-copper" onclick="importPromptResponse('count')">Import Count</button>
+      </div>
+      <div id="prompt-count-result" class="mt-4 hidden"></div>
+    </div>
+
+    <!-- Invoice prompt -->
+    <div class="panel p-6 rivets mb-6" style="max-width:720px">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="serif" style="font-size:1.2rem;color:var(--cream)">3 — Invoice Prompt</h3>
+        <span style="font-size:11px;color:var(--text-light)">Each delivery</span>
+      </div>
+      <p class="text-muted mb-3" style="font-size:13px">Take a photo of your invoice, attach it to the AI, and paste this prompt. Or use the Invoice view for automatic photo parsing.</p>
+      <textarea id="prompt-invoice-text" class="prompt-box mb-3" readonly></textarea>
+      <button class="btn-outline btn-sm mb-6" onclick="copyPrompt('prompt-invoice-text')">Copy Prompt</button>
+      <div style="height:1px;background:var(--gear-border);margin-bottom:20px"></div>
+      <label style="font-size:11px;color:var(--text-light);letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:8px">Paste AI Response Here</label>
+      <textarea id="prompt-invoice-response" class="textarea" placeholder='{"items": [...]}' style="min-height:120px"></textarea>
+      <div class="flex justify-end mt-3">
+        <button class="btn-copper" onclick="importPromptResponse('invoice')">Import Invoice</button>
+      </div>
+      <div id="prompt-invoice-result" class="mt-4 hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- VIEW: INVOICE UPLOAD                            -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="view-invoice" class="view">
+  <div class="topbar grain">
+    <div class="flex items-center justify-between container" style="padding:0">
+      <div class="flex items-center gap-3">
+        <button class="btn-outline btn-xs" onclick="showView('dashboard')">&larr; Back</button>
+        <span class="serif copper-text" style="font-size:15px">Invoice Entry</span>
+      </div>
+      <span id="invoice-ai-badge" class="ai-badge"></span>
+    </div>
+  </div>
+  <div class="container" style="padding-top:24px;padding-bottom:80px;max-width:860px">
+    <!-- Upload area -->
+    <div class="panel p-6 rivets mb-6">
+      <h3 class="serif" style="font-size:1.2rem;color:var(--cream);margin-bottom:16px">Upload Invoice Photos</h3>
+      <div class="instructions-box mb-4">
+        Take photos of your delivery invoices and upload them here. The AI will extract all line items. You can edit any values before saving.
+      </div>
+      <div class="flex items-center gap-4 mb-4" style="flex-wrap:wrap">
+        <label style="cursor:pointer">
+          <input id="invoice-file-input" type="file" accept="image/*,application/pdf" multiple onchange="handleInvoiceFiles(this)" style="display:none">
+          <span class="btn-outline" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;font-size:13px;cursor:pointer">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v10M4 5l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="1" y="12" width="14" height="3" rx="1" fill="currentColor" opacity="0.3"/></svg>
+            Choose Photos
+          </span>
+        </label>
+        <span id="invoice-file-count" class="text-muted" style="font-size:13px"></span>
+      </div>
+      <div id="invoice-file-previews" class="flex gap-3 mb-4" style="flex-wrap:wrap"></div>
+      <div id="invoice-ai-note" class="hidden mb-4" style="font-size:13px;color:var(--text-muted);padding:10px 14px;border:1px solid rgba(205,127,50,0.15)">
+        No AI configured. <a onclick="showView('prompts')" style="color:var(--copper);cursor:pointer;text-decoration:underline">Use the AI Prompts view</a> to extract line items manually, then paste the JSON response there.
+      </div>
+      <button id="invoice-parse-btn" class="btn-copper" onclick="parseInvoices()" style="display:none">Parse with AI</button>
+    </div>
+
+    <!-- Extracted items table -->
+    <div id="invoice-items-section" class="hidden">
+      <div class="panel p-6 rivets mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="serif" style="font-size:1.2rem;color:var(--cream)">Review Line Items</h3>
+          <button class="btn-outline btn-sm" onclick="addInvoiceRow()">+ Add Row</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Size</th>
+                <th>Qty</th>
+                <th>Unit Cost</th>
+                <th>Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="invoice-items-body"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between mt-6">
+          <div>
+            <label style="font-size:11px;color:var(--text-light);letter-spacing:0.06em;text-transform:uppercase;display:block;margin-bottom:6px">Invoice Date</label>
+            <input id="invoice-date" class="input" type="date" style="max-width:180px">
+          </div>
+          <button class="btn-copper" onclick="saveInvoice()">Save Invoice</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Past invoices list -->
+    <div class="panel p-6 rivets">
+      <h3 class="serif" style="font-size:1.2rem;color:var(--cream);margin-bottom:16px">Invoice History</h3>
+      <div id="invoice-history-list">
+        <p class="text-muted text-center" style="padding:24px 0;font-size:13px">Loading...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- VIEW: FINANCIAL SUMMARY                         -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="view-financial" class="view">
+  <div class="topbar grain">
+    <div class="flex items-center justify-between container" style="padding:0">
+      <div class="flex items-center gap-3">
+        <button class="btn-outline btn-xs" onclick="showView('dashboard')">&larr; Back</button>
+        <span class="serif copper-text" style="font-size:15px">Financial Summary</span>
+      </div>
+      <button class="btn-outline btn-sm" onclick="exportXlsx()">Export to Excel</button>
+    </div>
+  </div>
+  <div class="container" style="padding-top:24px;padding-bottom:80px">
+    <!-- Stat cards -->
+    <div class="grid grid-4 gap-4 mb-8" id="fin-stats"></div>
+
+    <!-- Usage table -->
+    <div class="panel p-6 rivets mb-6">
+      <h3 class="serif" style="font-size:1.2rem;color:var(--cream);margin-bottom:16px">This Week's Usage</h3>
+      <div id="fin-usage-note" class="instructions-box mb-4 hidden">
+        Need at least 2 counts to calculate usage.
+        <button class="btn-outline btn-xs" style="margin-left:12px" onclick="showView('count')">Start Count</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="fin-table" id="usage-table">
+          <thead>
+            <tr>
+              <th onclick="sortFinTable('usage-table',0)">Product</th>
+              <th onclick="sortFinTable('usage-table',1)">Usage</th>
+              <th onclick="sortFinTable('usage-table',2)">Cost Impact</th>
+              <th onclick="sortFinTable('usage-table',3)">Prev Level</th>
+              <th onclick="sortFinTable('usage-table',4)">Invoiced</th>
+              <th onclick="sortFinTable('usage-table',5)">Current Level</th>
+            </tr>
+          </thead>
+          <tbody id="usage-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Cost per oz table -->
+    <div class="panel p-6 rivets">
+      <h3 class="serif" style="font-size:1.2rem;color:var(--cream);margin-bottom:16px">Cost Per Ounce</h3>
+      <div style="overflow-x:auto">
+        <table class="fin-table" id="cpo-table">
+          <thead>
+            <tr>
+              <th onclick="sortFinTable('cpo-table',0)">Product</th>
+              <th onclick="sortFinTable('cpo-table',1)">Category</th>
+              <th onclick="sortFinTable('cpo-table',2)">Size</th>
+              <th onclick="sortFinTable('cpo-table',3)">Unit Cost</th>
+              <th onclick="sortFinTable('cpo-table',4)">Cost / oz</th>
+            </tr>
+          </thead>
+          <tbody id="cpo-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ═══════════════════════════════════════════════════
    STATE
@@ -882,7 +1209,10 @@ let state = {
   stations: [],    // [{ id, name, type, order }]
   bottles: [],     // [{ id, name, category, station_id, size, par, cost, level }]
   counts: [],      // [{ id, date, items:[{ bottle_id, level, prev_level }] }]
-  pendingCount: {} // { bottle_id: level } for current count session
+  pendingCount: {},  // { bottle_id: level } for current count session
+  aiConfigured: false,
+  pendingInvoiceFiles: [],  // FileList base64 data URIs
+  pendingInvoiceItems: [],  // extracted line items
 };
 
 /* ── Load from localStorage ── */
@@ -947,6 +1277,10 @@ function showView(name) {
   if (name === 'dashboard') renderDashboard();
   if (name === 'count') renderCountMode();
   if (name === 'history') renderHistory();
+  if (name === 'config') renderConfig();
+  if (name === 'prompts') renderPrompts();
+  if (name === 'invoice') renderInvoiceView();
+  if (name === 'financial') renderFinancial();
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1634,6 +1968,17 @@ function renderCountMode() {
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   document.getElementById('count-header').textContent = 'Weekly Count \u2014 ' + dateStr;
 
+  const badge = document.getElementById('count-ai-badge');
+  if (state.aiConfigured) {
+    badge.textContent = 'AI Auto';
+    badge.className = 'ai-badge ai-auto';
+    badge.classList.remove('hidden');
+  } else {
+    badge.textContent = 'Local Match';
+    badge.className = 'ai-badge';
+    badge.classList.remove('hidden');
+  }
+
   state.pendingCount = {};
 
   // Station tabs for manual
@@ -1757,32 +2102,60 @@ async function processCountNotes() {
   if (!notes) { flashInput('count-voice-input'); return; }
 
   showLoader('Processing count...');
-  const result = await apiFetch('/parse-notes', {
-    method: 'POST',
-    body: { notes: notes, stations: state.stations, bottles: state.bottles }
-  });
+
+  let result = null;
+
+  if (state.aiConfigured) {
+    const aiResp = await apiFetch('/ai/call', {
+      method: 'POST',
+      body: { type: 'count', text: notes }
+    });
+    if (aiResp && aiResp.result) {
+      const parsed = await apiFetch('/ai/parse-response', {
+        method: 'POST',
+        body: { type: 'count', json_text: aiResp.result }
+      });
+      if (parsed && parsed.matched) {
+        result = parsed;
+      }
+    }
+  }
+
+  if (!result) {
+    // Fuzzy match fallback
+    result = await apiFetch('/parse-notes', {
+      method: 'POST',
+      body: { text: notes, stations: state.stations, bottles: state.bottles }
+    });
+  }
+
   hideLoader();
 
-  if (result && result.bottles) {
+  if (result && result.matched) {
+    result.matched.forEach(m => {
+      const match = state.bottles.find(x => x.id === m.bottle_id) ||
+                    state.bottles.find(x => x.name.toLowerCase() === (m.bottle_name || '').toLowerCase());
+      if (match && m.level !== undefined) {
+        state.pendingCount[match.id] = m.level;
+      }
+    });
+    renderCountParseResults(result);
+  } else if (result && result.bottles) {
+    // old parse-notes shape
     result.bottles.forEach(b => {
-      const match = state.bottles.find(x =>
-        x.name.toLowerCase() === (b.name || '').toLowerCase()
-      );
+      const match = state.bottles.find(x => x.name.toLowerCase() === (b.name || '').toLowerCase());
       if (match && b.level !== undefined) {
         state.pendingCount[match.id] = b.level;
       }
     });
-    renderCountParseResults(result);
+    renderCountParseResults({ matched: result.bottles.map(b => ({
+      bottle_id: b.id, bottle_name: b.name, level: b.level, confidence: b.confidence || 'low'
+    })), unmatched: result.unmatched || [] });
   } else {
-    // Local fallback
     const parsed = localParse(notes);
     parsed.forEach(p => {
-      const match = state.bottles.find(x =>
-        x.name.toLowerCase() === p.name.toLowerCase()
-      );
-      if (match) {
-        state.pendingCount[match.id] = p.level;
-      }
+      const match = state.bottles.find(x => x.name.toLowerCase() === p.name.toLowerCase());
+      if (match) state.pendingCount[match.id] = p.level;
     });
     renderCountParseLocal(parsed);
   }
@@ -1792,17 +2165,35 @@ function renderCountParseResults(result) {
   const el = document.getElementById('count-parse-results');
   let html = '<h3 class="serif mb-4" style="font-size:1.2rem;color:var(--cream)">Parsed Results</h3>';
 
-  (result.bottles || []).forEach(b => {
-    const match = state.bottles.find(x => x.name.toLowerCase() === (b.name || '').toLowerCase());
-    const conf = b.confidence || 'high';
+  // Support both {matched:[...], unmatched:[...]} and legacy {bottles:[...]} shapes
+  const items = result.matched || result.bottles || [];
+  const unmatched = result.unmatched || [];
+
+  items.forEach(m => {
+    // matched shape: {bottle_id, bottle_name, level, confidence}
+    // bottles shape: {id, name, level, confidence}
+    const name = m.bottle_name || m.name || '';
+    const bid = m.bottle_id || m.id;
+    const match = bid
+      ? state.bottles.find(x => x.id === bid)
+      : state.bottles.find(x => x.name.toLowerCase() === name.toLowerCase());
+    const conf = m.confidence || 'high';
     const confCls = conf === 'high' ? 'conf-high' : (conf === 'med' ? 'conf-med' : 'conf-low');
     html += `<div class="parse-item ${match ? '' : 'unmatched'}">
       <span class="conf-dot ${confCls}"></span>
-      <span style="flex:1;color:var(--cream);font-size:14px">${escHtml(b.name)}</span>
-      <span class="text-muted" style="font-size:13px">${levelLabel(b.level)}</span>
+      <span style="flex:1;color:var(--cream);font-size:14px">${escHtml(name)}</span>
+      <span class="text-muted" style="font-size:13px">${levelLabel(m.level)}</span>
       ${match ? '<span style="color:var(--patina-light);font-size:11px">Matched</span>' : '<span style="color:var(--wine-glow);font-size:11px">Not found</span>'}
     </div>`;
   });
+
+  if (unmatched.length) {
+    html += `<div class="mt-4" style="color:var(--wine-glow);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px">Unmatched (${unmatched.length})</div>`;
+    unmatched.forEach(u => {
+      const text = typeof u === 'string' ? u : (u.text || JSON.stringify(u));
+      html += `<div class="parse-item unmatched"><span style="color:var(--wine-glow);margin-right:8px">?</span><span style="color:var(--text-muted);font-size:13px">${escHtml(text)}</span></div>`;
+    });
+  }
 
   el.innerHTML = html;
   el.classList.remove('hidden');
@@ -2049,9 +2440,504 @@ function categoryOptions(selected) {
 }
 
 /* ═══════════════════════════════════════════════════
+   CONFIG VIEW
+   ═══════════════════════════════════════════════════ */
+async function renderConfig() {
+  const cfg = await apiFetch('/config');
+  if (!cfg) return;
+  document.getElementById('cfg-api-url').value = cfg.api_base_url || '';
+  document.getElementById('cfg-api-key').value = cfg.api_key_masked || '';
+  document.getElementById('cfg-model').value = cfg.model || '';
+  // Pre-fill bar name from state
+  document.getElementById('cfg-bar-name').value = (state.bar && state.bar.name) || '';
+  const badge = document.getElementById('cfg-ai-status');
+  if (cfg.configured) {
+    badge.textContent = 'Connected';
+    badge.className = 'ai-badge ai-auto';
+  } else {
+    badge.textContent = 'Not configured';
+    badge.className = 'ai-badge';
+  }
+  state.aiConfigured = cfg.configured;
+}
+
+async function saveConfig() {
+  const barName = document.getElementById('cfg-bar-name').value.trim();
+  const apiUrl = document.getElementById('cfg-api-url').value.trim();
+  const apiKey = document.getElementById('cfg-api-key').value.trim();
+  const model = document.getElementById('cfg-model').value.trim();
+
+  if (barName && state.bar) {
+    state.bar.name = barName;
+    saveState();
+    document.getElementById('bar-name-display').textContent = barName;
+    // Sync to server
+    await apiFetch('/bar/setup', { method: 'POST', body: { bar_name: barName, stations: [] } });
+  }
+
+  const result = await apiFetch('/config', {
+    method: 'POST',
+    body: { api_base_url: apiUrl, api_key: apiKey, model: model }
+  });
+  if (result) {
+    state.aiConfigured = result.configured;
+    const badge = document.getElementById('cfg-ai-status');
+    badge.textContent = result.configured ? 'Saved ✓' : 'Saved (no key)';
+    badge.className = result.configured ? 'ai-badge ai-auto' : 'ai-badge';
+  }
+}
+
+async function testAiConnection() {
+  const resultEl = document.getElementById('cfg-test-result');
+  resultEl.classList.remove('hidden');
+  resultEl.style.color = 'var(--text-muted)';
+  resultEl.textContent = 'Testing connection...';
+
+  await saveConfig();
+
+  const resp = await apiFetch('/ai/call', {
+    method: 'POST',
+    body: { type: 'count', text: "tito's nine tenths, ketel one half" }
+  });
+
+  if (resp && resp.result) {
+    resultEl.style.color = 'var(--patina-light)';
+    resultEl.textContent = '✓ Connection successful. AI responded correctly.';
+    state.aiConfigured = true;
+  } else if (resp && resp.error === 'AI not configured') {
+    resultEl.style.color = 'var(--wine-glow)';
+    resultEl.textContent = '✗ Save your API URL and key first.';
+  } else {
+    resultEl.style.color = 'var(--wine-glow)';
+    resultEl.textContent = '✗ Connection failed. Check your URL, key, and model name.';
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   PROMPTS VIEW
+   ═══════════════════════════════════════════════════ */
+async function renderPrompts() {
+  // Load and display prompts
+  const [setupResp, invoiceResp] = await Promise.all([
+    apiFetch('/ai/prompt?type=setup'),
+    apiFetch('/ai/prompt?type=invoice'),
+  ]);
+  if (setupResp) document.getElementById('prompt-setup-text').value = setupResp.prompt;
+  if (invoiceResp) document.getElementById('prompt-invoice-text').value = invoiceResp.prompt;
+
+  const badge = document.getElementById('prompts-ai-badge');
+  badge.textContent = state.aiConfigured ? 'AI Auto Available' : 'Manual Mode';
+  badge.className = state.aiConfigured ? 'ai-badge ai-auto' : 'ai-badge ai-manual';
+}
+
+async function loadCountPrompt() {
+  const resp = await apiFetch('/ai/prompt?type=count');
+  if (resp) document.getElementById('prompt-count-text').value = resp.prompt;
+}
+
+function copyPrompt(textareaId) {
+  const el = document.getElementById(textareaId);
+  if (!el || !el.value) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    showModal(`<div class="summary-popup">
+      <h3 class="serif" style="font-size:1.2rem;color:var(--cream);margin-bottom:12px">Prompt Copied</h3>
+      <p class="text-muted" style="font-size:13px">Paste it into ChatGPT, Claude.ai, Gemini, or any AI.<br>Then paste the JSON response back here.</p>
+      <button class="btn-outline mt-6" onclick="closeModal()">Got it</button>
+    </div>`);
+  });
+}
+
+async function importPromptResponse(type) {
+  const responseEl = document.getElementById(`prompt-${type}-response`);
+  const resultEl = document.getElementById(`prompt-${type}-result`);
+  const jsonText = responseEl ? responseEl.value.trim() : '';
+  if (!jsonText) return;
+
+  showLoader('Importing...');
+  const resp = await apiFetch('/ai/parse-response', {
+    method: 'POST',
+    body: { type: type, json_text: jsonText }
+  });
+  hideLoader();
+
+  if (!resp) {
+    resultEl.innerHTML = `<div class="parse-item unmatched"><span style="color:var(--wine-glow)">Error parsing response. Check the JSON format.</span></div>`;
+    resultEl.classList.remove('hidden');
+    return;
+  }
+
+  if (resp.error) {
+    resultEl.innerHTML = `<div class="parse-item unmatched"><span style="color:var(--wine-glow)">${escHtml(resp.error)}</span></div>`;
+    resultEl.classList.remove('hidden');
+    return;
+  }
+
+  if (type === 'setup') {
+    // Merge into state
+    const stations = resp.stations || [];
+    stations.forEach(s => {
+      if (!state.stations.find(x => x.name === s.name)) {
+        state.stations.push({ id: s.id || genId(), name: s.name, type: s.type || 'well', order: state.stations.length });
+      }
+      s.bottles.forEach(b => {
+        const stn = state.stations.find(x => x.name === s.name);
+        state.bottles.push({
+          id: b.id || genId(), name: b.name, category: b.category || guessCategory(b.name),
+          station_id: stn ? stn.id : '', size: 750, par: 1, cost: 0, level: 1.0
+        });
+      });
+    });
+    saveState();
+    resultEl.innerHTML = `<div class="parse-item"><span class="conf-dot conf-high"></span><span style="color:var(--patina-light)">Imported ${resp.bottle_count || 0} products across ${resp.station_count || 0} stations.</span></div>`;
+  } else if (type === 'count') {
+    const matched = resp.matched || [];
+    matched.forEach(m => {
+      const bottle = state.bottles.find(x => x.id === m.bottle_id) ||
+                     state.bottles.find(x => x.name.toLowerCase() === (m.bottle_name || '').toLowerCase());
+      if (bottle && m.level !== undefined) {
+        state.pendingCount[bottle.id] = m.level;
+      }
+    });
+    saveState();
+    resultEl.innerHTML = `<div class="parse-item"><span class="conf-dot conf-high"></span><span style="color:var(--patina-light)">${matched.length} items imported. Go to Count view to review and save.</span></div>`;
+  } else if (type === 'invoice') {
+    const items = resp.items || [];
+    state.pendingInvoiceItems = items;
+    saveState();
+    resultEl.innerHTML = `<div class="parse-item"><span class="conf-dot conf-high"></span><span style="color:var(--patina-light)">${items.length} line items ready. Switch to the Invoice view to review and save.</span></div>`;
+    setTimeout(() => showView('invoice'), 1500);
+  }
+
+  resultEl.classList.remove('hidden');
+}
+
+/* ═══════════════════════════════════════════════════
+   INVOICE VIEW
+   ═══════════════════════════════════════════════════ */
+async function renderInvoiceView() {
+  const badge = document.getElementById('invoice-ai-badge');
+  badge.textContent = state.aiConfigured ? 'AI Auto' : 'Manual';
+  badge.className = state.aiConfigured ? 'ai-badge ai-auto' : 'ai-badge ai-manual';
+
+  const parseBtn = document.getElementById('invoice-parse-btn');
+  const aiNote = document.getElementById('invoice-ai-note');
+  if (state.aiConfigured) {
+    parseBtn.style.display = '';
+    aiNote.classList.add('hidden');
+  } else {
+    parseBtn.style.display = 'none';
+    aiNote.classList.remove('hidden');
+  }
+
+  // Set today as default date
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('invoice-date').value = today;
+
+  // If items pending from prompt import, show them
+  if (state.pendingInvoiceItems && state.pendingInvoiceItems.length > 0) {
+    showInvoiceItems(state.pendingInvoiceItems);
+  }
+
+  // Load invoice history
+  await loadInvoiceHistory();
+}
+
+function handleInvoiceFiles(input) {
+  const files = Array.from(input.files || []);
+  if (!files.length) return;
+  document.getElementById('invoice-file-count').textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected`;
+
+  const previews = document.getElementById('invoice-file-previews');
+  previews.innerHTML = '';
+  state.pendingInvoiceFiles = [];
+
+  files.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      state.pendingInvoiceFiles[i] = e.target.result;
+      // Show thumbnail
+      if (file.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.style.cssText = 'height:80px;width:auto;border:1px solid var(--gear-border);object-fit:cover';
+        previews.appendChild(img);
+      } else {
+        const span = document.createElement('span');
+        span.textContent = file.name;
+        span.style.cssText = 'font-size:12px;color:var(--text-muted);padding:8px;border:1px solid var(--gear-border)';
+        previews.appendChild(span);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function parseInvoices() {
+  if (!state.pendingInvoiceFiles.length) {
+    showModal(`<div class="summary-popup"><p class="text-muted">Please select invoice photos first.</p><button class="btn-outline mt-4" onclick="closeModal()">OK</button></div>`);
+    return;
+  }
+  showLoader('Parsing invoice with AI...');
+  const resp = await apiFetch('/ai/call', {
+    method: 'POST',
+    body: { type: 'invoice', text: '', images: state.pendingInvoiceFiles }
+  });
+  if (resp && resp.result) {
+    const parsed = await apiFetch('/ai/parse-response', {
+      method: 'POST',
+      body: { type: 'invoice', json_text: resp.result }
+    });
+    hideLoader();
+    if (parsed && parsed.items) {
+      showInvoiceItems(parsed.items);
+    } else {
+      showModal(`<div class="summary-popup"><p class="text-muted">Could not parse invoice. Try the AI Prompts view for manual entry.</p><button class="btn-outline mt-4" onclick="closeModal()">OK</button></div>`);
+    }
+  } else {
+    hideLoader();
+    showModal(`<div class="summary-popup"><p class="text-muted">${escHtml((resp && resp.error) || 'AI call failed.')}</p><button class="btn-outline mt-4" onclick="closeModal()">OK</button></div>`);
+  }
+}
+
+function showInvoiceItems(items) {
+  state.pendingInvoiceItems = items;
+  const tbody = document.getElementById('invoice-items-body');
+  tbody.innerHTML = '';
+  items.forEach((item, i) => {
+    tbody.appendChild(makeInvoiceRow(item, i));
+  });
+  document.getElementById('invoice-items-section').classList.remove('hidden');
+}
+
+function makeInvoiceRow(item, i) {
+  const tr = document.createElement('tr');
+  tr.dataset.idx = i;
+  const fields = [
+    { key: 'bottle_name', val: item.name || item.bottle_name || '' },
+    { key: 'size', val: item.size || '' },
+    { key: 'qty', val: item.qty != null ? item.qty : '' },
+    { key: 'unit_cost', val: item.unit_cost != null ? item.unit_cost : '' },
+    { key: 'total', val: item.total != null ? item.total : '' },
+  ];
+  fields.forEach(f => {
+    const td = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.value = f.val;
+    inp.dataset.key = f.key;
+    inp.addEventListener('change', () => {
+      if (!state.pendingInvoiceItems[i]) state.pendingInvoiceItems[i] = {};
+      state.pendingInvoiceItems[i][f.key] = inp.value;
+    });
+    td.appendChild(inp);
+    tr.appendChild(td);
+  });
+  // Delete button
+  const delTd = document.createElement('td');
+  const delBtn = document.createElement('button');
+  delBtn.textContent = '×';
+  delBtn.className = 'delete-btn';
+  delBtn.onclick = () => {
+    state.pendingInvoiceItems.splice(i, 1);
+    tr.remove();
+  };
+  delTd.appendChild(delBtn);
+  tr.appendChild(delTd);
+  return tr;
+}
+
+function addInvoiceRow() {
+  const item = { bottle_name: '', size: '750ml', qty: '', unit_cost: '', total: '' };
+  const i = state.pendingInvoiceItems.length;
+  state.pendingInvoiceItems.push(item);
+  document.getElementById('invoice-items-body').appendChild(makeInvoiceRow(item, i));
+  document.getElementById('invoice-items-section').classList.remove('hidden');
+}
+
+function readInvoiceTableValues() {
+  const rows = document.querySelectorAll('#invoice-items-body tr');
+  const items = [];
+  rows.forEach(tr => {
+    const inputs = tr.querySelectorAll('input');
+    if (!inputs.length) return;
+    const item = {};
+    inputs.forEach(inp => { item[inp.dataset.key] = inp.value; });
+    if (item.bottle_name || item.qty) items.push(item);
+  });
+  return items;
+}
+
+async function saveInvoice() {
+  const items = readInvoiceTableValues();
+  if (!items.length) {
+    showModal(`<div class="summary-popup"><p class="text-muted">No line items to save.</p><button class="btn-outline mt-4" onclick="closeModal()">OK</button></div>`);
+    return;
+  }
+  const date = document.getElementById('invoice-date').value || new Date().toISOString().slice(0, 10);
+  showLoader('Saving invoice...');
+  const result = await apiFetch('/invoice', { method: 'POST', body: { date, items } });
+  hideLoader();
+  if (result && result.id) {
+    state.pendingInvoiceItems = [];
+    document.getElementById('invoice-items-body').innerHTML = '';
+    document.getElementById('invoice-items-section').classList.add('hidden');
+    showModal(`<div class="summary-popup">
+      <h3 class="serif" style="font-size:1.4rem;color:var(--cream);margin-bottom:12px">Invoice Saved</h3>
+      <p class="text-muted">${items.length} line items recorded for ${date}.</p>
+      <button class="btn-copper mt-6" onclick="closeModal();loadInvoiceHistory()">Done</button>
+    </div>`);
+    await loadInvoiceHistory();
+  }
+}
+
+async function loadInvoiceHistory() {
+  const invoices = await apiFetch('/invoices');
+  const el = document.getElementById('invoice-history-list');
+  if (!invoices || !invoices.length) {
+    el.innerHTML = '<p class="text-muted text-center" style="padding:24px 0;font-size:13px">No invoices saved yet.</p>';
+    return;
+  }
+  let html = '';
+  invoices.slice(0, 20).forEach(inv => {
+    const date = inv.date ? inv.date.slice(0, 10) : '—';
+    const total = inv.items.reduce((s, i) => s + (parseFloat(i.total) || parseFloat(i.qty) * parseFloat(i.unit_cost) || 0), 0);
+    html += `<div class="history-entry" onclick="this.classList.toggle('expanded')">
+      <div class="history-header">
+        <div class="flex items-center gap-4">
+          <span style="font-size:14px;color:var(--cream)">${date}</span>
+          <span class="badge badge-well">${inv.items.length} items</span>
+          ${total ? `<span class="text-muted" style="font-size:13px">$${total.toFixed(2)}</span>` : ''}
+        </div>
+        <svg class="chevron" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="color:var(--text-light);transition:transform 0.3s"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+      </div>
+      <div class="history-body"><div style="padding:8px 20px 16px">
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <tr style="color:var(--text-light)"><td style="padding:4px 8px">Product</td><td>Size</td><td>Qty</td><td>Unit Cost</td><td>Total</td></tr>
+          ${inv.items.map(i => `<tr style="border-top:1px solid rgba(205,127,50,0.06)">
+            <td style="padding:4px 8px;color:var(--cream)">${escHtml(i.bottle_name || i.name || '')}</td>
+            <td style="padding:4px 8px;color:var(--text-muted)">${escHtml(i.size || '')}</td>
+            <td style="padding:4px 8px;color:var(--text-muted)">${i.qty != null ? i.qty : ''}</td>
+            <td style="padding:4px 8px;color:var(--text-muted)">${i.unit_cost != null ? '$' + parseFloat(i.unit_cost).toFixed(2) : ''}</td>
+            <td style="padding:4px 8px;color:var(--text-muted)">${i.total != null ? '$' + parseFloat(i.total).toFixed(2) : ''}</td>
+          </tr>`).join('')}
+        </table>
+      </div></div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════
+   FINANCIAL VIEW
+   ═══════════════════════════════════════════════════ */
+async function renderFinancial() {
+  showLoader('Loading financials...');
+  const [statsData, usageData, cpoData] = await Promise.all([
+    apiFetch('/stats'),
+    apiFetch('/usage'),
+    apiFetch('/cost-per-oz'),
+  ]);
+  hideLoader();
+
+  // Stats cards
+  const finStats = document.getElementById('fin-stats');
+  if (statsData) {
+    finStats.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-number copper-text">$${(statsData.total_value || 0).toFixed(0)}</div>
+        <div class="stat-label">Inventory Value</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number copper-text">${statsData.total_products || 0}</div>
+        <div class="stat-label">Products</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number copper-text">${statsData.station_count || 0}</div>
+        <div class="stat-label">Stations</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number copper-text" style="font-size:1.2rem">${statsData.last_count_date ? statsData.last_count_date.slice(0,10) : 'Never'}</div>
+        <div class="stat-label">Last Count</div>
+      </div>
+    `;
+  }
+
+  // Usage table
+  const usageNote = document.getElementById('fin-usage-note');
+  const usageTbody = document.getElementById('usage-tbody');
+  if (!usageData || usageData.error || !usageData.usage || !usageData.usage.length) {
+    usageNote.classList.remove('hidden');
+    usageTbody.innerHTML = '';
+  } else {
+    usageNote.classList.add('hidden');
+    let totalCost = 0;
+    usageTbody.innerHTML = usageData.usage.map(u => {
+      totalCost += u.cost_impact || 0;
+      const usagePct = (u.usage * 100).toFixed(0) + '%';
+      const costColor = u.cost_impact > 0 ? 'var(--patina-light)' : 'var(--text-muted)';
+      return `<tr>
+        <td>${escHtml(u.bottle_name)}</td>
+        <td>${usagePct}</td>
+        <td style="color:${costColor}">${u.cost_impact ? '$' + u.cost_impact.toFixed(2) : '—'}</td>
+        <td>${levelLabel(u.previous_level)}</td>
+        <td>${u.invoiced_qty ? '+' + u.invoiced_qty : '—'}</td>
+        <td>${levelLabel(u.current_level)}</td>
+      </tr>`;
+    }).join('');
+
+    // Update stats with usage cost
+    const statCards = finStats.querySelectorAll('.stat-card');
+    if (statCards[1]) {
+      statCards[1].innerHTML = `<div class="stat-number copper-text">$${totalCost.toFixed(0)}</div><div class="stat-label">Usage Cost</div>`;
+    }
+  }
+
+  // Cost per oz table
+  const cpotbody = document.getElementById('cpo-tbody');
+  if (cpoData && cpoData.length) {
+    cpotbody.innerHTML = cpoData.map(c => `<tr>
+      <td>${escHtml(c.bottle_name)}</td>
+      <td><span class="badge-category">${escHtml(c.category)}</span></td>
+      <td>${escHtml(c.size || '')}</td>
+      <td>${c.unit_cost ? '$' + parseFloat(c.unit_cost).toFixed(2) : '—'}</td>
+      <td>${c.cost_per_oz ? '$' + c.cost_per_oz.toFixed(3) : '—'}</td>
+    </tr>`).join('');
+  } else {
+    cpotbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:24px">Add product costs to see cost per ounce.</td></tr>';
+  }
+}
+
+function sortFinTable(tableId, colIdx) {
+  const tbody = document.getElementById(tableId).querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const asc = tbody.dataset.sortCol === String(colIdx) && tbody.dataset.sortDir !== 'desc';
+  tbody.dataset.sortCol = colIdx;
+  tbody.dataset.sortDir = asc ? 'desc' : 'asc';
+
+  rows.sort((a, b) => {
+    const ta = a.cells[colIdx] ? a.cells[colIdx].textContent.replace(/[$%]/g, '').trim() : '';
+    const tb = b.cells[colIdx] ? b.cells[colIdx].textContent.replace(/[$%]/g, '').trim() : '';
+    const na = parseFloat(ta), nb = parseFloat(tb);
+    if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
+    return asc ? ta.localeCompare(tb) : tb.localeCompare(ta);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+function exportXlsx() {
+  const a = document.createElement('a');
+  a.href = API + '/export';
+  a.click();
+}
+
+/* ═══════════════════════════════════════════════════
    INIT
    ═══════════════════════════════════════════════════ */
 loadState();
+
+// Fetch AI config status on startup
+apiFetch('/config').then(cfg => {
+  if (cfg) state.aiConfigured = cfg.configured;
+});
 
 // Determine starting view
 if (state.bar && state.bottles.length > 0) {

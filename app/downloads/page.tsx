@@ -53,29 +53,33 @@ export default function DownloadsPage() {
             number="01"
             title="Bar Inventory Master Sheet"
             format="XLSX"
-            description="Complete workbook with tabs for liquor, beer, wine, and mixers. Formulas calculate total value, usage rate, pour cost, and reorder alerts."
-            status="coming-soon"
+            description="Complete workbook with formulas for total value, usage rate, and pour cost. Color-coded level gauges. Ready to fill in tonight."
+            status="available"
+            href="/downloads/Bar-Inventory-Master.xlsx"
           />
           <DownloadCard
             number="02"
             title="Quick Count Template"
-            format="PDF + XLSX"
+            format="XLSX"
             description="Stripped-down count sheet for weekly spot checks. Print it, grab a pen, count, done. Only the columns that matter."
-            status="coming-soon"
+            status="available"
+            href="/downloads/Quick-Count-Sheet.xlsx"
           />
           <DownloadCard
             number="03"
             title="Variance Calculator"
             format="XLSX"
-            description="Plug in physical counts and POS data. Calculates pour cost, shrinkage by category, flags problem products automatically."
-            status="coming-soon"
+            description="Four tabs: Count Entry, Invoice Entry, Reconciliation, and Cost Per Oz. Plug in numbers, formulas do the math."
+            status="available"
+            href="/downloads/Variance-Calculator.xlsx"
           />
           <DownloadCard
             number="04"
             title="Product Database"
-            format="CSV + XLSX"
-            description="500+ common bar products with bottle sizes, standard costs, and pour sizes. Import and skip the data entry."
-            status="coming-soon"
+            format="XLSX"
+            description="200+ common bar products with bottle sizes, standard costs, and pour sizes. Filterable by category. Import and skip the data entry."
+            status="available"
+            href="/downloads/Product-Database.xlsx"
           />
           <DownloadCard
             number="05"
@@ -201,12 +205,14 @@ function DownloadCard({
   format,
   description,
   status,
+  href,
 }: {
   number: string;
   title: string;
   format: string;
   description: string;
   status: "available" | "coming-soon";
+  href?: string;
 }) {
   return (
     <div className="panel card-lift rounded-sm p-7 flex flex-col relative rivets">
@@ -225,10 +231,14 @@ function DownloadCard({
       <p className="text-text-muted text-sm leading-relaxed mb-8 flex-1">
         {description}
       </p>
-      {status === "available" ? (
-        <button className="w-full bg-copper hover:bg-copper-bright text-bg font-semibold py-3 text-sm tracking-wide transition-all hover:shadow-[0_0_20px_rgba(205,127,50,0.2)]">
+      {status === "available" && href ? (
+        <a
+          href={href}
+          download
+          className="w-full block bg-copper hover:bg-copper-bright text-bg font-semibold py-3 text-sm tracking-wide text-center transition-all hover:shadow-[0_0_20px_rgba(205,127,50,0.2)]"
+        >
           Download Free
-        </button>
+        </a>
       ) : (
         <div className="w-full border border-gear-border text-text-light text-xs tracking-[0.2em] uppercase py-3 text-center">
           Building at Agave &amp; Rye
