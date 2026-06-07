@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { Gear, GearDivider, BottleIcon } from "@/components/SteampunkElements";
-
+import DownloadButton from "@/components/DownloadButton";
 
 export const metadata: Metadata = {
   title: "Free Downloads — Open Source Barware",
@@ -54,14 +54,14 @@ export default function DownloadsPage() {
             number="01"
             title="Bar Inventory Master Sheet"
             format="XLSX"
-            description="Complete workbook with formulas for total value, usage rate, and pour cost. Color-coded level gauges. Ready to fill in tonight."
+            description="Complete workbook with tabs for liquor, beer, wine, and mixers. Formulas calculate total value, usage rate, pour cost, and reorder alerts."
             status="available"
             href="/downloads/Bar-Inventory-Master.xlsx"
           />
           <DownloadCard
             number="02"
             title="Quick Count Template"
-            format="XLSX"
+            format="PDF + XLSX"
             description="Stripped-down count sheet for weekly spot checks. Print it, grab a pen, count, done. Only the columns that matter."
             status="available"
             href="/downloads/Quick-Count-Sheet.xlsx"
@@ -70,15 +70,15 @@ export default function DownloadsPage() {
             number="03"
             title="Variance Calculator"
             format="XLSX"
-            description="Four tabs: Count Entry, Invoice Entry, Reconciliation, and Cost Per Oz. Plug in numbers, formulas do the math."
+            description="Plug in physical counts and POS data. Calculates pour cost, shrinkage by category, flags problem products automatically."
             status="available"
             href="/downloads/Variance-Calculator.xlsx"
           />
           <DownloadCard
             number="04"
             title="Product Database"
-            format="XLSX"
-            description="200+ common bar products with bottle sizes, standard costs, and pour sizes. Filterable by category. Import and skip the data entry."
+            format="CSV + XLSX"
+            description="500+ common bar products with bottle sizes, standard costs, and pour sizes. Import and skip the data entry."
             status="available"
             href="/downloads/Product-Database.xlsx"
           />
@@ -209,7 +209,7 @@ function DownloadCard({
   description,
   status,
   href,
-  linkLabel = "Download Free",
+  linkLabel = "Launch App",
 }: {
   number: string;
   title: string;
@@ -219,7 +219,7 @@ function DownloadCard({
   href?: string;
   linkLabel?: string;
 }) {
-  const isExternal = href?.startsWith("/downloads/");
+  const isFileDownload = href?.startsWith("/downloads/");
 
   return (
     <div className="panel card-lift rounded-sm p-7 flex flex-col relative rivets">
@@ -239,14 +239,8 @@ function DownloadCard({
         {description}
       </p>
       {status === "available" && href ? (
-        isExternal ? (
-          <a
-            href={href}
-            download
-            className="w-full block bg-copper hover:bg-copper-bright text-bg font-semibold py-3 text-sm tracking-wide text-center transition-all hover:shadow-[0_0_20px_rgba(205,127,50,0.2)]"
-          >
-            {linkLabel}
-          </a>
+        isFileDownload ? (
+          <DownloadButton tool={{ number, title, format, href }} />
         ) : (
           <Link
             href={href}
