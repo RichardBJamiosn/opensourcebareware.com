@@ -157,7 +157,7 @@ export default function ResourcesPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <ResourceCard
             title="Another Round Another Rally"
-            url="https://www.ararally.org"
+            url="https://anotherroundanotherrally.org"
             description="Mental health and financial support for bar workers. Counseling, emergency funds, and community when you need it most."
           />
           <ResourceCard

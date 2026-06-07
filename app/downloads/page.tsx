@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { Gear, GearDivider, BottleIcon } from "@/components/SteampunkElements";
 
+
 export const metadata: Metadata = {
   title: "Free Downloads — Open Source Barware",
   description:
@@ -93,7 +94,9 @@ export default function DownloadsPage() {
             title="Mobile Count App"
             format="Web App"
             description="Progressive web app for counting on your phone. Works offline behind the bar, syncs on WiFi. Replace the clipboard."
-            status="coming-soon"
+            status="available"
+            href="/inventory"
+            linkLabel="Launch App"
           />
         </div>
       </section>
@@ -206,6 +209,7 @@ function DownloadCard({
   description,
   status,
   href,
+  linkLabel = "Download Free",
 }: {
   number: string;
   title: string;
@@ -213,7 +217,10 @@ function DownloadCard({
   description: string;
   status: "available" | "coming-soon";
   href?: string;
+  linkLabel?: string;
 }) {
+  const isExternal = href?.startsWith("/downloads/");
+
   return (
     <div className="panel card-lift rounded-sm p-7 flex flex-col relative rivets">
       <div className="flex items-start justify-between mb-5">
@@ -232,13 +239,22 @@ function DownloadCard({
         {description}
       </p>
       {status === "available" && href ? (
-        <a
-          href={href}
-          download
-          className="w-full block bg-copper hover:bg-copper-bright text-bg font-semibold py-3 text-sm tracking-wide text-center transition-all hover:shadow-[0_0_20px_rgba(205,127,50,0.2)]"
-        >
-          Download Free
-        </a>
+        isExternal ? (
+          <a
+            href={href}
+            download
+            className="w-full block bg-copper hover:bg-copper-bright text-bg font-semibold py-3 text-sm tracking-wide text-center transition-all hover:shadow-[0_0_20px_rgba(205,127,50,0.2)]"
+          >
+            {linkLabel}
+          </a>
+        ) : (
+          <Link
+            href={href}
+            className="w-full block bg-copper hover:bg-copper-bright text-bg font-semibold py-3 text-sm tracking-wide text-center transition-all hover:shadow-[0_0_20px_rgba(205,127,50,0.2)]"
+          >
+            {linkLabel}
+          </Link>
+        )
       ) : (
         <div className="w-full border border-gear-border text-text-light text-xs tracking-[0.2em] uppercase py-3 text-center">
           Building at Agave &amp; Rye
