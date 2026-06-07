@@ -70,7 +70,7 @@ export default function ResourcesPage() {
           />
           <ResourceCard
             title="USBG Cleveland Chapter"
-            url="https://www.usbg.org"
+            url="https://sites.google.com/usbg.org/usbg-cleveland/home"
             description="The local chapter where Open Source Barware was born. Cleveland bartenders building community, one shift at a time."
             highlight
           />
