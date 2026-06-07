@@ -72,7 +72,7 @@ export default function Home() {
                 <span className="relative z-10">Download Free Tools</span>
               </Link>
               <Link
-                href="/about"
+                href="/downloads"
                 className="border border-gear-border text-text-muted hover:text-copper hover:border-copper/50 px-8 py-4 text-sm tracking-wide transition-all"
               >
                 Read Our Story
@@ -173,28 +173,24 @@ export default function Home() {
             title="Smart Inventory Sheets"
             description="Pre-built spreadsheets that calculate cost, usage, variance, and reorder points. Plug in your counts — the gears do the rest."
             icon={<BottleIcon />}
-            href="/downloads"
           />
           <ToolCard
             number="02"
             title="Variance Tracker"
             description="Compare physical counts against POS sales. See exactly where you're losing money — by category, by bottle, by shift."
             icon={<BottleIcon />}
-            href="/downloads"
           />
           <ToolCard
             number="03"
             title="AI Bottle Counter"
             description="Snap a photo of your shelf. AI reads the bottle levels so you're not eyeballing tenths at 2am with bleary eyes."
             icon={<BottleIcon />}
-            href="/inventory"
           />
           <ToolCard
             number="04"
             title="Product Database"
             description="500+ common bar products pre-loaded. Bottle sizes, costs, standard pours. Skip the data entry, start counting."
             icon={<BottleIcon />}
-            href="/downloads"
           />
         </div>
       </section>
@@ -261,7 +257,7 @@ export default function Home() {
               Download Free Tools
             </Link>
             <Link
-              href="/resources"
+              href="/downloads"
               className="inline-block border border-gear-border text-text-muted hover:text-copper hover:border-copper/50 px-10 py-4 text-sm tracking-wide transition-all"
             >
               Explore Community Resources
@@ -289,16 +285,14 @@ function ToolCard({
   title,
   description,
   icon,
-  href,
 }: {
   number: string;
   title: string;
   description: string;
   icon: React.ReactNode;
-  href: string;
 }) {
   return (
-    <div className="panel card-lift rounded-sm p-8 relative rivets flex flex-col">
+    <div className="panel card-lift rounded-sm p-8 relative rivets">
       <div className="flex items-start justify-between mb-6">
         <span className="text-xs font-mono text-text-light tracking-wider">
           {number}
@@ -306,16 +300,7 @@ function ToolCard({
         <div className="opacity-60">{icon}</div>
       </div>
       <h3 className="font-serif text-xl text-cream mb-3">{title}</h3>
-      <p className="text-text-muted leading-relaxed text-sm mb-6 flex-1">{description}</p>
-      <Link
-        href={href}
-        className="text-xs tracking-[0.15em] uppercase text-copper hover:text-copper-bright transition-colors flex items-center gap-2"
-      >
-        {href === "/inventory" ? "Launch App" : "Get Download"}
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M3.5 2H10V8.5M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Link>
+      <p className="text-text-muted leading-relaxed text-sm">{description}</p>
     </div>
   );
 }
